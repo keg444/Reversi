@@ -17,7 +17,8 @@ class Reversi(object):
         self.dx = [-1, 0, 1]
         self.dy = [-1, 0, 1]
         self.turn = 1
-        
+    
+    # 石おけるかチェック
     def _check(self, board, put, flip=False):
         y, x = put
         player = self.current
@@ -48,21 +49,25 @@ class Reversi(object):
         return found
                     
                 
-    def _display(self):
+    def _display(self, valid=None):
         print("-" * 30)
         print("   0  1  2  3  4  5  6  7")
         for i in range(tablesize):
             print(f"{i}", end="  ")
             for j in range(tablesize):
-                if self.cell[i][j] == 0:
-                    print("-", end="  ")
-                elif self.cell[i][j] == 1:
+                if self.cell[i][j] == blank:
+                    if valid and (i, j) in valid:
+                        print("?", end="  ")
+                    else:
+                        print("-", end="  ")
+                elif self.cell[i][j] == white:
                     print("○", end="  ")
                 else:
                     print("●", end="  ")
             print()
         print("-" * 30)
     
+    # 合法手を返す
     def _get_move(self):
         valid = []
         for r in range(tablesize):
@@ -77,52 +82,88 @@ class Reversi(object):
     def _fastestW(self):   # 白が埋まる
         print("(first:black)\n53 → 34 → 23 → 52 → 45 → 54 → 63 → 44 → 41")
     
-    def play(self):
+    # def _cpu(self, valid):
+    #     if not valid:
+            
+    def _skip(self, current_player, pass_count):
+        pass_count = 0
+        self.current = -self.current
+        opp_valid = self._get_move()
+        # 合法手がない
+        if not opp_valid:
+            print("Skipped: Both has no valid moves\n")
+            return True, pass_count
+        print(f"Skipped: {current_player} has no valid moves\n")
+        pass_count += 1
+        
+        if pass_count == 2:
+            print("Skipped: Both has no valid moves\n")
+            return True, pass_count
+        self.current = -self.current
+        return True, pass_count
+    
+    def _score(self, black_score, white_score):
         score_count_b = 0
         score_count_w = 0
         draw_count = 0
-        pass_count = 0
+        if black_score > white_score:
+            print("● Black Win")
+            score_count_b += 1
+        elif black_score < white_score:
+            print("○ White Win")
+            score_count_w += 1
+        else:
+            print("Draw")
+            draw_count += 1
+        print(f"Score: ●{black_score} - ○{white_score}")
+        print(f"Total score: ●win {score_count_b} - ○win {score_count_w} - draw {draw_count}")
+
+
         
+    
+    def play(self):
         while True:
             print("\n===== New Game =====")
             self.__init__()
             while True:
-                self._display()
                 valid = self._get_move()
+                self._display(valid)
                 current_p = self.current
                 
+                # 盤面全埋まり
                 if np.all(self.cell != blank):
                     print("The board is full")
                     break
                 
+                # 合法手がない場合
                 if not valid:
-                    self.current = -self.current
-                    opp_valid = self._get_move()
-                    self.current = -self.current
-                    if not opp_valid:
-                        print("Skipped: Both has no valid moves")
+                    game_over, pass_count = self._skip(current_p, pass_count)
+                    if game_over:
                         break
-                    print(f"Skipped: {current_p} has no valid moves")
-                    pass_count += 1
-                    if pass_count == 2:
-                        print("Skipped Both has no valid moves")
-                        break
-                    self.current = -self.current
                     continue
+                pass_count = 0
                 
+                # 入力
                 while True:
-                    print(f"\n↓ Waiting for player{"●" if self.current == black else "○"} input... (ex: 3 4)")
+                    print(f"\nturn count: {self.turn}")
+                    print(f"\n↓ Waiting for player{"●" if self.current == black else "○"} input... (ex: 34)")
                     user_input = input("press \"q\" to quit the game\n(i j): ").strip().lower()
                     if user_input == "q" or user_input == "Q":
                         print("\n===== Quitted the game =====")
                         sys.exit()
+                    ####### おまけ #########
                     elif user_input == "full black":
                         self._fastestB()
                     elif user_input == "full white":
                         self._fastestW()
+                    #################
                     try:
-                        y, x = map(int, user_input.split())
+                        # y, x = map(int, user_input.split())
+                        # put = (y, x)
+                        y = int(user_input[0])
+                        x = int(user_input[1])
                         put = (y, x)
+                        
                         if put in valid:
                             print(f"\nplayer{"●" if self.current == black else "○"} (i j): {put}")
                             break
@@ -132,21 +173,12 @@ class Reversi(object):
                         print("\n!!!!! Invalid input: Enter the (i j) ex: 3 4 !!!!!")
                 self._check(self.cell, put, flip=True)
                 self.current = -self.current
+                self.turn += 1
             
-            b_score = np.sum(self.cell == black)
-            w_score = np.sum(self.cell == white)
-            if b_score > w_score:
-                print("● Black Win")
-                score_count_b += 1
-            elif b_score < w_score:
-                print("○ White Win")
-                score_count_w += 1
-            else:
-                print("Draw")
-                draw_count += 1
-            print(f"Score: ●{b_score} - ○{w_score}")
-            print(f"Total score: ●win {score_count_b} - ○win {score_count_w} - draw {draw_count}")
+            # スコア表示
+            self._score(np.sum(self.cell == black), np.sum(self.cell == white))
             
+            # 再戦確認
             again = input("\n Play again? (y/n)").strip().lower()
             if again != "y":
                 print("===== ｵﾜﾀ ====")
@@ -156,4 +188,3 @@ if __name__ == "__main__":
     Reversi().play()
 
 
-# dekita??
