@@ -187,4 +187,6 @@ class Reversi(object):
 if __name__ == "__main__":
     Reversi().play()
 
+# gitに上げられん
+
 
